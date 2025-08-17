@@ -15,6 +15,7 @@ interface CommandServerDeps {
   setModel: (index: number) => void;
   getModelList: () => { currentIndex: number; models: string[] };
   toggleProMode: () => void;
+  restartApp: () => void;
 }
 
 export function installCommandServer(deps: CommandServerDeps) {
@@ -29,7 +30,8 @@ export function installCommandServer(deps: CommandServerDeps) {
 		toggleConfig,
 		setModel,
 		getModelList,
-		toggleProMode
+		toggleProMode,
+		restartApp
 	} = deps;
 
 	const server = http.createServer(async (req, res) => {
@@ -105,6 +107,10 @@ export function installCommandServer(deps: CommandServerDeps) {
 					res.statusCode = 200;
 					return res.end(JSON.stringify(data));
 				}
+				case '/restart':
+					restartApp();
+					res.statusCode = 200;
+					return res.end('ok');
 				default:
 					res.statusCode = 404;
 					return res.end('not found');

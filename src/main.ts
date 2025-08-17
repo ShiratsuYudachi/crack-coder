@@ -201,6 +201,10 @@ function createWindow() {
     toggleProMode: () => {
       proMode = !proMode;
       mainWindow?.webContents.send('pro-mode-updated', { enabled: proMode });
+    },
+    restartApp: () => {
+      app.relaunch();
+      app.exit(0);
     }
   });
 
