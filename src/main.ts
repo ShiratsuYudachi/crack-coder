@@ -250,8 +250,11 @@ async function handleTakeScreenshot() {
   if (screenshotQueue.length >= MAX_SCREENSHOTS) return;
 
   try {
-    // Hide window before taking screenshot
-    mainWindow?.hide();
+    // Make window fully transparent before taking screenshot to avoid capturing overlay
+    const prevOpacity = mainWindow?.getOpacity() ?? 1;
+    try {
+      mainWindow?.setOpacity(0);
+    } catch {}
     await new Promise(resolve => setTimeout(resolve, 100));
 
     const buffer = await captureScreenshot();
@@ -263,12 +266,19 @@ async function handleTakeScreenshot() {
     
     const screenshot = { id, preview, path: screenshotPath };
     screenshotQueue.push(screenshot);
-
-    mainWindow?.show();
     mainWindow?.webContents.send('screenshot-taken', screenshot);
+    // Restore opacity without stealing focus
+    try {
+      if (process.platform === 'darwin') {
+        // On macOS, showInactive prevents focus steal if the window was hidden; here we only adjust opacity
+        mainWindow?.setOpacity(prevOpacity);
+      } else {
+        mainWindow?.setOpacity(prevOpacity);
+      }
+    } catch {}
   } catch (error) {
     console.error('Error taking screenshot:', error);
-    mainWindow?.show();
+    try { mainWindow?.setOpacity(1); } catch {}
   }
 }
 
