@@ -5,7 +5,7 @@ interface Props {
 	code: string;
 	timeComplexity: string;
 	spaceComplexity: string;
-	tests?: { input: string; expected: string; actual: string; ok: boolean; error?: string }[];
+	tests?: { input: string; expected: string; actual?: string; ok?: boolean; error?: string }[];
 }
 
 const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComplexity, tests }) => {
@@ -36,12 +36,14 @@ const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComp
 						{tests.map((t, i) => (
 							<div key={i} style={{ marginBottom: 8 }}>
 								<div>
-									<span style={{ fontWeight: 600 }}>{t.ok ? 'PASS' : 'FAIL'}</span>
+									<span style={{ fontWeight: 600 }}>
+										{typeof t.ok === 'undefined' ? 'PENDING' : t.ok ? 'PASS' : 'FAIL'}
+									</span>
 									{t.error ? ` - ${t.error}` : ''}
 								</div>
 								<div><code>input:</code> {t.input}</div>
 								<div><code>expected:</code> {t.expected}</div>
-								<div><code>actual:</code> {t.actual}</div>
+								<div><code>actual:</code> {typeof t.actual === 'undefined' ? '(pending...)' : t.actual}</div>
 							</div>
 						))}
 					</div>

@@ -61,6 +61,8 @@ declare global {
       onModelUpdated: (callback: (data: { index: number; name: string }) => void) => void;
       onProModeUpdated: (callback: (data: { enabled: boolean }) => void) => void;
       toggleProMode: () => void;
+      pythonLoad: (code: string) => Promise<{ id: number; ok: boolean; error?: string }>;
+      pythonRun: (input?: string) => Promise<{ id: number; ok: boolean; stdout?: string; stderr?: string; error?: string }>;
     };
   }
 }
@@ -80,6 +82,9 @@ const App: React.FC = () => {
     'openai/o4-mini-high',
     'openai/o3'
   ]);
+  const [exampleTests, setExampleTests] = useState<
+    { input: string; expected: string; actual?: string; ok?: boolean; error?: string }[] | null
+  >(null);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -106,6 +111,7 @@ const App: React.FC = () => {
       console.log('Processing started');
       setIsProcessing(true);
       setResult(null);
+      setExampleTests(null);
     });
 
     // Keyboard event listener
@@ -165,6 +171,73 @@ const App: React.FC = () => {
       try {
         const parsedResult = JSON.parse(resultStr) as AIResponse;
         setResult(parsedResult);
+
+        if ((parsedResult as any).responseType === 'code') {
+          const codeResult = parsedResult as CodeResponse;
+          if (Array.isArray(codeResult.examples) && codeResult.examples.length > 0) {
+            console.log('[Examples] Detected examples in AI response:', codeResult.examples);
+            // Initialize as pending
+            const initial = codeResult.examples.map(e => ({ input: e.input, expected: e.output }));
+            setExampleTests(initial);
+
+            // Load code into python daemon first
+            (async () => {
+              console.log('[Examples] Loading code into python daemon...');
+              const loadRes = await window.electron.pythonLoad(codeResult.code);
+              console.log('[Examples] pythonLoad result:', loadRes);
+              if (!loadRes || !loadRes.ok) {
+                const errMsg = loadRes?.error || 'pythonLoad failed';
+                console.error('[Examples] pythonLoad error:', errMsg);
+                setExampleTests(prev => (prev || []).map(t => ({ ...t, ok: false, error: errMsg })));
+                return;
+              }
+
+              // Run all examples in parallel; update incrementally
+              (codeResult.examples || []).forEach((ex, idx) => {
+                console.log(`[Examples] Running example #${idx}:`, ex);
+                window.electron.pythonRun(ex.input)
+                  .then(runRes => {
+                    console.log(`[Examples] Result for #${idx}:`, runRes);
+                    setExampleTests(prev => {
+                      if (!prev) return prev;
+                      const next = prev.slice();
+                      if (!runRes || !runRes.ok) {
+                        next[idx] = {
+                          ...next[idx],
+                          actual: runRes?.stdout ?? '',
+                          ok: false,
+                          error: runRes?.error || 'pythonRun failed'
+                        };
+                      } else {
+                        const actualOut = (runRes.stdout || '').replace(/\r\n/g, '\n');
+                        const expectedOut = (ex.output || '').replace(/\r\n/g, '\n');
+                        next[idx] = {
+                          ...next[idx],
+                          actual: actualOut,
+                          ok: actualOut.trim() === expectedOut.trim()
+                        };
+                      }
+                      return next;
+                    });
+                  })
+                  .catch(err => {
+                    console.error(`[Examples] Exception for #${idx}:`, err);
+                    setExampleTests(prev => {
+                      if (!prev) return prev;
+                      const next = prev.slice();
+                      next[idx] = { ...next[idx], ok: false, error: err?.message || 'run error' };
+                      return next;
+                    });
+                  });
+              });
+            })();
+          } else {
+            console.log('[Examples] No examples provided by AI. Skipping example runs.');
+            setExampleTests(null);
+          }
+        } else {
+          setExampleTests(null);
+        }
       } catch (error) {
         console.error('Error parsing result:', error);
       }
@@ -373,6 +446,7 @@ const App: React.FC = () => {
               code={result.code}
               timeComplexity={result.timeComplexity}
               spaceComplexity={result.spaceComplexity}
+              tests={exampleTests || undefined}
             />
           ) : result.responseType === 'answer' ? (
             <AnswerResult result={result.result} approach={result.approach} />
