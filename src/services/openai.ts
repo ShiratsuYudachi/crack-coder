@@ -20,6 +20,7 @@ function updateConfig(config: Config) {
   try {
     openai = new OpenAI({
       apiKey: config.apiKey.trim(),
+      baseURL: 'https://openrouter.ai/api/v1'
     });
     language = config.language || 'Python';
     // console.log('OpenAI client initialized with new config');
@@ -33,7 +34,7 @@ function updateConfig(config: Config) {
 if (process.env.OPENAI_API_KEY) {
   try {
     updateConfig({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
       language: process.env.LANGUAGE || 'Python'
     });
   } catch (error) {
@@ -94,9 +95,9 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
       });
     }
 
-    // Get response from OpenAI
+    // Get response from OpenAI (via OpenRouter)
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "openai/gpt-4o",
       messages: messages as any,
       max_tokens: 2000,
       temperature: 0.7,
