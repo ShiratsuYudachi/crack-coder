@@ -36,5 +36,9 @@ contextBridge.exposeInMainWorld('electron', {
   },
   onModelUpdated: (callback: (data: { index: number; name: string }) => void) => {
     ipcRenderer.on('model-updated', (_evt, data) => callback(data));
-  }
+  },
+  onProModeUpdated: (callback: (data: { enabled: boolean }) => void) => {
+    ipcRenderer.on('pro-mode-updated', (_evt, data) => callback(data));
+  },
+  toggleProMode: () => ipcRenderer.send('toggle-pro-mode')
 }); 

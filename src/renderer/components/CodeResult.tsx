@@ -5,9 +5,10 @@ interface Props {
 	code: string;
 	timeComplexity: string;
 	spaceComplexity: string;
+	tests?: { input: string; expected: string; actual: string; ok: boolean; error?: string }[];
 }
 
-const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComplexity }) => {
+const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComplexity, tests }) => {
 	const lines = code.split('\n');
 	return (
 		<div className="result">
@@ -28,6 +29,24 @@ const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComp
 					</code>
 				</pre>
 			</div>
+			{tests && tests.length > 0 && (
+				<div className="solution-section">
+					<h3>Examples Test</h3>
+					<div>
+						{tests.map((t, i) => (
+							<div key={i} style={{ marginBottom: 8 }}>
+								<div>
+									<span style={{ fontWeight: 600 }}>{t.ok ? 'PASS' : 'FAIL'}</span>
+									{t.error ? ` - ${t.error}` : ''}
+								</div>
+								<div><code>input:</code> {t.input}</div>
+								<div><code>expected:</code> {t.expected}</div>
+								<div><code>actual:</code> {t.actual}</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 			<div className="solution-section">
 				<h3>Complexity</h3>
 				<p>Time: {timeComplexity}</p>

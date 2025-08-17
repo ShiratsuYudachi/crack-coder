@@ -19,6 +19,7 @@ interface CodeResponse {
   code: string;
   timeComplexity: string;
   spaceComplexity: string;
+  examples?: { input: string; output: string }[];
 }
 
 interface AnswerResponse {
@@ -58,6 +59,8 @@ declare global {
       onShowConfig: (callback: () => void) => void;
       onPageScroll: (callback: (direction: 'up' | 'down') => void) => void;
       onModelUpdated: (callback: (data: { index: number; name: string }) => void) => void;
+      onProModeUpdated: (callback: (data: { enabled: boolean }) => void) => void;
+      toggleProMode: () => void;
     };
   }
 }
@@ -70,6 +73,7 @@ const App: React.FC = () => {
   const [config, setConfig] = useState<Config | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [modelName, setModelName] = useState<string>('openai/gpt-5-chat');
+  const [proMode, setProMode] = useState<boolean>(false);
   const [modelList, setModelList] = useState<string[]>([
     'openai/gpt-5-chat',
     'openai/o4-mini',
@@ -112,6 +116,13 @@ const App: React.FC = () => {
       const isCmdOrCtrl = event.metaKey || event.ctrlKey;
 
       switch (event.key.toLowerCase()) {
+        case '`':
+          // toggle pro-mode when fn + backtick is pressed
+          // Note: in browsers, Fn state isn't exposed; we rely on Karabiner to call backend normally.
+          // Here we allow manual toggle for environments where Fn state is accessible.
+          // This will not interfere if Karabiner is used exclusively.
+          window.electron.toggleProMode();
+          break;
         case 'h':
           console.log('Screenshot hotkey pressed');
           await handleTakeScreenshot();
@@ -188,6 +199,9 @@ const App: React.FC = () => {
     // Model update events
     window.electron.onModelUpdated(({ index, name }) => {
       setModelName(name);
+    });
+    window.electron.onProModeUpdated(({ enabled }) => {
+      setProMode(enabled);
     });
 
     // Cleanup
@@ -301,12 +315,14 @@ const App: React.FC = () => {
       {/* Preview Row */}
       <div className="shortcuts-row">
         <div className="shortcut"><code>Model:</code> {modelName}</div>
+        <div className="shortcut"><code>Pro:</code> {proMode ? 'On' : 'Off'}</div>
         <div className="shortcut"><code>fn + C</code> Screenshot</div>
         <div className="shortcut"><code>fn + ↵</code> Solution</div>
         <div className="shortcut"><code>fn + R</code> Reset</div>
         <div className="hover-shortcuts">
           <div className="hover-shortcuts-content">
             <div className="shortcut"><code>fn + 1/2/3/4</code> Switch Model</div>
+            <div className="shortcut"><code>fn + `</code> Toggle Pro Mode</div>
             <div className="shortcut"><code>fn + P</code> Settings</div>
             <div className="shortcut"><code>fn + Q</code> Quit</div>
             <div className="shortcut"><code>fn + ⇧ + Arrow Keys</code> Move Around</div>
@@ -328,7 +344,30 @@ const App: React.FC = () => {
         {isProcessing ? (
           <div className="processing">Processing... ({screenshots.length} screenshots)</div>
         ) : result ? (
-          result.responseType === 'code' ? (
+          Array.isArray((result as any).results) && (result as any).pro ? (
+            <div style={{ display: 'flex', gap: 12 }}>
+              {(result as any).results.map((r: any, idx: number) => (
+                <div key={idx} style={{ flex: 1, minWidth: 0 }}>
+                  {r.ok ? (
+                    r.data.responseType === 'code' ? (
+                      <CodeResult
+                        approach={r.data.approach}
+                        code={r.data.code}
+                        timeComplexity={r.data.timeComplexity}
+                        spaceComplexity={r.data.spaceComplexity}
+                      />
+                    ) : r.data.responseType === 'answer' ? (
+                      <AnswerResult result={r.data.result} approach={r.data.approach} />
+                    ) : (
+                      <RawResult raw={r.data.raw} />
+                    )
+                  ) : (
+                    <RawResult raw={r.error || 'error'} />
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : result.responseType === 'code' ? (
             <CodeResult
               approach={result.approach}
               code={result.code}
@@ -336,10 +375,7 @@ const App: React.FC = () => {
               spaceComplexity={result.spaceComplexity}
             />
           ) : result.responseType === 'answer' ? (
-            <AnswerResult
-              result={result.result}
-              approach={result.approach}
-            />
+            <AnswerResult result={result.result} approach={result.approach} />
           ) : (
             <RawResult raw={result.raw} />
           )

@@ -39,6 +39,7 @@ const MODEL_CANDIDATES = [
   'openai/o3'
 ];
 let currentModelIndex = 0;
+let proMode = false;
 
 async function ensureScreenshotDir() {
   try {
@@ -154,7 +155,27 @@ function createWindow() {
     pageScroll: (dir) => mainWindow?.webContents.send('page-scroll', dir),
     moveWindow,
     triggerScreenshot: handleTakeScreenshot,
-    triggerProcess: handleProcessScreenshots,
+    triggerProcess: async () => {
+      if (!proMode) {
+        await handleProcessScreenshots();
+        return;
+      }
+      try {
+        const models = ['openai/gpt-5-chat', 'openai/o4-mini-high', 'openai/o3'];
+        mainWindow?.webContents.send('processing-started');
+        const results = await Promise.all(models.map(async (m) => {
+          try {
+            const r = await openaiService.processScreenshots(screenshotQueue, m);
+            return { model: m, ok: true, data: r };
+          } catch (e: any) {
+            return { model: m, ok: false, error: e?.message || 'error' };
+          }
+        }));
+        mainWindow?.webContents.send('processing-complete', JSON.stringify({ pro: true, results }));
+      } catch (e) {
+        mainWindow?.webContents.send('processing-complete', JSON.stringify({ pro: true, results: [] }));
+      }
+    },
     triggerReset: handleResetQueue,
     toggleVisualHidden: () => {
       isVisualHidden = !isVisualHidden;
@@ -164,6 +185,10 @@ function createWindow() {
     setModel: (index: number) => {
       if (index < 0 || index >= MODEL_CANDIDATES.length) return;
       currentModelIndex = index;
+      if (proMode) {
+        proMode = false;
+        mainWindow?.webContents.send('pro-mode-updated', { enabled: proMode });
+      }
       mainWindow?.webContents.send('model-updated', {
         index: currentModelIndex,
         name: MODEL_CANDIDATES[currentModelIndex]
@@ -172,7 +197,18 @@ function createWindow() {
     getModelList: () => ({
       currentIndex: currentModelIndex,
       models: MODEL_CANDIDATES
-    })
+    }),
+    toggleProMode: () => {
+      proMode = !proMode;
+      mainWindow?.webContents.send('pro-mode-updated', { enabled: proMode });
+    }
+  });
+
+  // Toggle pro-mode via arg-based trigger
+  // Expose as IPC to the renderer too
+  ipcMain.on('toggle-pro-mode', () => {
+    proMode = !proMode;
+    mainWindow?.webContents.send('pro-mode-updated', { enabled: proMode });
   });
 }
 

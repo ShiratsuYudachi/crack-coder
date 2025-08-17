@@ -14,6 +14,7 @@ interface CommandServerDeps {
 	toggleConfig: () => void;
   setModel: (index: number) => void;
   getModelList: () => { currentIndex: number; models: string[] };
+  toggleProMode: () => void;
 }
 
 export function installCommandServer(deps: CommandServerDeps) {
@@ -27,7 +28,8 @@ export function installCommandServer(deps: CommandServerDeps) {
 		toggleVisualHidden,
 		toggleConfig,
 		setModel,
-		getModelList
+		getModelList,
+		toggleProMode
 	} = deps;
 
 	const server = http.createServer(async (req, res) => {
@@ -80,6 +82,10 @@ export function installCommandServer(deps: CommandServerDeps) {
 				}
 				case '/config':
 					toggleConfig();
+					res.statusCode = 200;
+					return res.end('ok');
+				case '/pro/toggle':
+					toggleProMode();
 					res.statusCode = 200;
 					return res.end('ok');
 				case '/model/set': {

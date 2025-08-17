@@ -62,6 +62,7 @@ export interface CodeResponse {
   code: string;
   timeComplexity: string;
   spaceComplexity: string;
+  examples?: { input: string; output: string }[];
 }
 
 export interface AnswerResponse {
@@ -81,7 +82,7 @@ type MessageContent =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
 
-export async function processScreenshots(screenshots: { path: string }[]): Promise<AIResponse> {
+export async function processScreenshots(screenshots: { path: string }[], overrideModel?: string): Promise<AIResponse> {
   if (!openai) {
     throw new Error('OpenAI client not initialized. Please configure API key first. Click CTRL/CMD + P to open settings and set the API key.');
   }
@@ -100,7 +101,8 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
                       "approach": "Explain the full solving process in Chinese",
                       "code": "Complete, runnable solution code",
                       "timeComplexity": "Big-O with reasoning",
-                      "spaceComplexity": "Big-O with reasoning"
+                      "spaceComplexity": "Big-O with reasoning",
+                      "examples": [{"input": "...", "output": "..."}]  // Include ONLY IF explicit example input AND output are provided in the question; otherwise omit this field entirely.
                     }
                   - If the question does NOT require writing code, return responseType:"answer" with fields: {
                       "responseType": "answer",
@@ -110,7 +112,9 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
                   Hard requirements:
                   - Always output ONLY a single JSON object, no markdown, no backticks.
                   - "approach" MUST always be in Chinese.
-                  - For responseType:"answer", "result" MUST be the same language as the question.`
+                  - For responseType:"answer", "result" MUST be the same language as the question.
+                  - For responseType:"code": If the problem statement includes explicit example input AND output, extract them into an array field named "examples" with objects of shape {"input": string, "output": string}; include multiple pairs if present.
+                  - If no explicit example input/output are present, DO NOT include the "examples" field at all (do not include null/empty).`
       },
       {
         role: "user" as const,
@@ -138,7 +142,7 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
 
     // Get response from OpenAI-compatible API (via OpenRouter)
     const response = await openai.chat.completions.create({
-      model: modelName,
+      model: (overrideModel && overrideModel.trim()) || modelName,
       messages: messages as any,
       max_tokens: 2000,
       temperature: 0.7,
