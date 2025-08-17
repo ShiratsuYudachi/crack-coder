@@ -42,18 +42,34 @@ if (process.env.OPENAI_API_KEY) {
   }
 }
 
-interface ProcessedSolution {
+type ResponseType = 'code' | 'answer' | 'raw';
+
+export interface CodeResponse {
+  responseType: 'code';
   approach: string;
   code: string;
   timeComplexity: string;
   spaceComplexity: string;
 }
 
+export interface AnswerResponse {
+  responseType: 'answer';
+  approach: string;
+  result: string;
+}
+
+export interface RawResponse {
+  responseType: 'raw';
+  raw: string;
+}
+
+export type AIResponse = CodeResponse | AnswerResponse | RawResponse;
+
 type MessageContent = 
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
 
-export async function processScreenshots(screenshots: { path: string }[]): Promise<ProcessedSolution> {
+export async function processScreenshots(screenshots: { path: string }[]): Promise<AIResponse> {
   if (!openai) {
     throw new Error('OpenAI client not initialized. Please configure API key first. Click CTRL/CMD + P to open settings and set the API key.');
   }
@@ -62,14 +78,27 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
     const messages = [
       {
         role: "system" as const,
-        content: `You are an expert coding interview assistant. Analyze the coding question from the screenshots and provide a solution in ${language}.
-                 Return the response in the following JSON format:
-                 {
-                   "approach": "Detailed approach to solve the problem on how are we solving the problem, that the interviewee will speak out loud and in easy explainatory words",
-                   "code": "The complete solution code",
-                   "timeComplexity": "Big O analysis of time complexity with the reason",
-                   "spaceComplexity": "Big O analysis of space complexity with the reason"
-                 }`
+        content: `You are an expert technical interview assistant.
+                  You will receive one or more screenshots that contain either a coding question or a non-coding question.
+                  You MUST always answer in valid JSON and ONLY JSON with no extra text.
+                  The first field MUST be "responseType" with value either "code" or "answer".
+                  If multiple questions are shown, answer first question only.
+                  - If the question requires writing code, return responseType:"code" with fields: {
+                      "responseType": "code",
+                      "approach": "Explain the full solving process in Chinese",
+                      "code": "Complete, runnable solution code",
+                      "timeComplexity": "Big-O with reasoning",
+                      "spaceComplexity": "Big-O with reasoning"
+                    }
+                  - If the question does NOT require writing code, return responseType:"answer" with fields: {
+                      "responseType": "answer",
+                      "approach": "Explain the solving process in Chinese",
+                      "result": "A concise final answer in the SAME language as the question; for multiple choice, output only the correct option"
+                    }
+                  Hard requirements:
+                  - Always output ONLY a single JSON object, no markdown, no backticks.
+                  - "approach" MUST always be in Chinese.
+                  - For responseType:"answer", "result" MUST be the same language as the question.`
       },
       {
         role: "user" as const,
@@ -104,8 +133,16 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
       response_format: { type: "json_object" }
     });
 
-    const content = response.choices[0].message.content || '{}';
-    return JSON.parse(content) as ProcessedSolution;
+    const content = response.choices[0].message.content || '';
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed && (parsed.responseType === 'code' || parsed.responseType === 'answer')) {
+        return parsed as AIResponse;
+      }
+      return { responseType: 'raw', raw: content } as RawResponse;
+    } catch {
+      return { responseType: 'raw', raw: content } as RawResponse;
+    }
   } catch (error) {
     console.error('Error processing screenshots:', error);
     throw error;

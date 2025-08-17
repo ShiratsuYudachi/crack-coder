@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import ConfigScreen from './ConfigScreen';
+import CodeResult from './components/CodeResult';
+import AnswerResult from './components/AnswerResult';
+import RawResult from './components/RawResult';
 
 interface Screenshot {
   id: number;
@@ -8,12 +11,28 @@ interface Screenshot {
   path: string;
 }
 
-interface ProcessedSolution {
+type ResponseType = 'code' | 'answer' | 'raw';
+
+interface CodeResponse {
+  responseType: 'code';
   approach: string;
   code: string;
   timeComplexity: string;
   spaceComplexity: string;
 }
+
+interface AnswerResponse {
+  responseType: 'answer';
+  approach: string;
+  result: string;
+}
+
+interface RawResponse {
+  responseType: 'raw';
+  raw: string;
+}
+
+type AIResponse = CodeResponse | AnswerResponse | RawResponse;
 
 interface Config {
   apiKey: string;
@@ -44,7 +63,7 @@ declare global {
 
 const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<ProcessedSolution | null>(null);
+  const [result, setResult] = useState<AIResponse | null>(null);
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [showConfig, setShowConfig] = useState(false);
   const [config, setConfig] = useState<Config | null>(null);
@@ -125,7 +144,7 @@ const App: React.FC = () => {
     window.electron.onProcessingComplete((resultStr) => {
       console.log('Processing complete. Result:', resultStr);
       try {
-        const parsedResult = JSON.parse(resultStr) as ProcessedSolution;
+        const parsedResult = JSON.parse(resultStr) as AIResponse;
         setResult(parsedResult);
       } catch (error) {
         console.error('Error parsing result:', error);
@@ -294,24 +313,21 @@ const App: React.FC = () => {
         {isProcessing ? (
           <div className="processing">Processing... ({screenshots.length} screenshots)</div>
         ) : result ? (
-          <div className="result">
-            <div className="solution-section">
-              <h3>Approach</h3>
-              <p>{result.approach}</p>
-            </div>
-            <div className="solution-section">
-              <h3>Solution</h3>
-              <pre>
-                <code>{formatCode(result.code)}</code>
-              </pre>
-            </div>
-            <div className="solution-section">
-              <h3>Complexity</h3>
-              <p>Time: {result.timeComplexity}</p>
-              <p>Space: {result.spaceComplexity}</p>
-            </div>
-            <div className="hint">(Press ⌘/Ctrl + R to reset)</div>
-          </div>
+          result.responseType === 'code' ? (
+            <CodeResult
+              approach={result.approach}
+              code={result.code}
+              timeComplexity={result.timeComplexity}
+              spaceComplexity={result.spaceComplexity}
+            />
+          ) : result.responseType === 'answer' ? (
+            <AnswerResult
+              result={result.result}
+              approach={result.approach}
+            />
+          ) : (
+            <RawResult raw={result.raw} />
+          )
         ) : (
           <div className="empty-status">
             {screenshots.length > 0 
