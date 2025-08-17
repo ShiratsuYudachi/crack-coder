@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('electron', {
   resetQueue: () => ipcRenderer.invoke('reset-queue'),
   getConfig: () => ipcRenderer.invoke('get-config'),
   saveConfig: (config: any) => ipcRenderer.invoke('save-config', config),
+  pythonLoad: (code: string) => ipcRenderer.invoke('python-load', code),
+  pythonRun: (input?: string) => ipcRenderer.invoke('python-run', input),
   
   toggleVisibility: () => ipcRenderer.send('toggle-visibility'),
   

@@ -3,9 +3,10 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import openaiService, { setModel as setAIModel } from './services/openai';
+import openaiService from './services/openai';
 import { installShortcutArgHandlers } from './shortcuts';
 import { installCommandServer } from './commandServer';
+import pythonDaemon from './pythonDaemon';
 
 const execFileAsync = promisify(execFile);
 
@@ -163,7 +164,6 @@ function createWindow() {
     setModel: (index: number) => {
       if (index < 0 || index >= MODEL_CANDIDATES.length) return;
       currentModelIndex = index;
-      setAIModel(MODEL_CANDIDATES[currentModelIndex]);
       mainWindow?.webContents.send('model-updated', {
         index: currentModelIndex,
         name: MODEL_CANDIDATES[currentModelIndex]
@@ -331,6 +331,16 @@ app.whenReady().then(async () => {
   config = await loadConfig();
   createWindow();
 
+  // Start python daemon early
+  try {
+    await pythonDaemon.start();
+  } catch (err) {
+    console.error('Failed to start Python daemon:', err);
+  }
+  console.log("[PythonTest] starting daemon test");
+  // Run a simple test after window shows
+  runPythonDaemonTest();
+
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -338,6 +348,7 @@ app.whenReady().then(async () => {
 
 app.on('will-quit', () => {
   handleResetQueue();
+  pythonDaemon.stop();
 });
 
 app.on('window-all-closed', function () {
@@ -348,6 +359,23 @@ app.on('window-all-closed', function () {
 ipcMain.handle('take-screenshot', handleTakeScreenshot);
 ipcMain.handle('process-screenshots', handleProcessScreenshots);
 ipcMain.handle('reset-queue', handleResetQueue);
+
+// Python daemon IPC
+ipcMain.handle('python-load', async (_evt, code: string) => {
+  try {
+    return await pythonDaemon.load(code);
+  } catch (err: any) {
+    return { id: -1, ok: false, error: err?.message || 'load failed' };
+  }
+});
+
+ipcMain.handle('python-run', async (_evt, input?: string) => {
+  try {
+    return await pythonDaemon.run(input);
+  } catch (err: any) {
+    return { id: -1, ok: false, error: err?.message || 'run failed' };
+  }
+});
 
 // Window control events
 ipcMain.on('minimize-window', () => {
@@ -394,3 +422,19 @@ ipcMain.handle('save-config', async (_, newConfig: Config) => {
     return false;
   }
 }); 
+
+async function runPythonDaemonTest() {
+  try {
+    const sampleCode = [
+      'import sys',
+      'data = sys.stdin.read().strip()',
+      'print(data.upper())'
+    ].join('\n');
+    const loadRes = await pythonDaemon.load(sampleCode);
+    console.log('[PythonTest] load:', loadRes);
+    const runRes = await pythonDaemon.run('hello world');
+    console.log('[PythonTest] run:', runRes);
+  } catch (err) {
+    console.error('[PythonTest] error:', err);
+  }
+}
