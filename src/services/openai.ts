@@ -6,10 +6,14 @@ dotenv.config();
 
 let openai: OpenAI | null = null;
 let language = process.env.LANGUAGE || "Python";
+let modelName = process.env.OPENROUTER_MODEL || process.env.MODEL || "google/gemini-2.5-pro";
+let baseUrl = process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1';
 
 interface Config {
   apiKey: string;
   language: string;
+  model?: string;
+  baseURL?: string;
 }
 
 function updateConfig(config: Config) {
@@ -20,9 +24,15 @@ function updateConfig(config: Config) {
   try {
     openai = new OpenAI({
       apiKey: config.apiKey.trim(),
-      baseURL: 'https://openrouter.ai/api/v1'
+      baseURL: config.baseURL?.trim() || baseUrl
     });
     language = config.language || 'Python';
+    if (config.model && config.model.trim()) {
+      modelName = config.model.trim();
+    }
+    if (config.baseURL && config.baseURL.trim()) {
+      baseUrl = config.baseURL.trim();
+    }
     // console.log('OpenAI client initialized with new config');
   } catch (error) {
     console.error('Error initializing OpenAI client:', error);
@@ -34,8 +44,10 @@ function updateConfig(config: Config) {
 if (process.env.OPENAI_API_KEY) {
   try {
     updateConfig({
-      apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
-      language: process.env.LANGUAGE || 'Python'
+      apiKey: (process.env.OPENAI_API_KEY || '').trim(),
+      language: process.env.LANGUAGE || 'Python',
+      model: process.env.OPENROUTER_MODEL || process.env.MODEL,
+      baseURL: process.env.OPENAI_BASE_URL
     });
   } catch (error) {
     console.error('Error initializing OpenAI with environment variables:', error);
@@ -124,9 +136,9 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
       });
     }
 
-    // Get response from OpenAI (via OpenRouter)
+    // Get response from OpenAI-compatible API (via OpenRouter)
     const response = await openai.chat.completions.create({
-      model: "openai/gpt-4o",
+      model: "google/gemini-2.5-pro",
       messages: messages as any,
       max_tokens: 2000,
       temperature: 0.7,
