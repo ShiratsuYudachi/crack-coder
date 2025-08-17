@@ -37,6 +37,7 @@ declare global {
       onProcessingStarted: (callback: () => void) => void;
       onQueueReset: (callback: () => void) => void;
       onShowConfig: (callback: () => void) => void;
+      onPageScroll: (callback: (direction: 'up' | 'down') => void) => void;
     };
   }
 }
@@ -147,6 +148,14 @@ const App: React.FC = () => {
       console.log('Queue reset triggered');
       setScreenshots([]);
       setResult(null);
+    });
+
+    // Listen for page scroll events from main (Option+Up/Down)
+    window.electron.onPageScroll((direction) => {
+      const viewportHeight = window.innerHeight;
+      const scrollAmount = viewportHeight * 0.9;
+      const delta = direction === 'up' ? -scrollAmount : scrollAmount;
+      window.scrollBy({ top: delta, behavior: 'smooth' });
     });
 
     // Cleanup

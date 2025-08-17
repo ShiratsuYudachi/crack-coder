@@ -28,5 +28,8 @@ contextBridge.exposeInMainWorld('electron', {
   },
   onShowConfig: (callback: () => void) => {
     ipcRenderer.on('show-config', () => callback());
+  },
+  onPageScroll: (callback: (direction: 'up' | 'down') => void) => {
+    ipcRenderer.on('page-scroll', (_, direction: 'up' | 'down') => callback(direction));
   }
 }); 

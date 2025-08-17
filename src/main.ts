@@ -112,6 +112,9 @@ function createWindow() {
   // Enable content protection to prevent screen capture
   mainWindow.setContentProtection(true);
 
+  // Make the window ignore mouse events (click-through)
+  mainWindow.setIgnoreMouseEvents(true);
+
   // Platform specific enhancements for macOS
   if (process.platform === 'darwin') {
     mainWindow.setHiddenInMissionControl(true);
@@ -143,6 +146,14 @@ function registerShortcuts() {
   globalShortcut.register('CommandOrControl+Right', () => moveWindow('right'));
   globalShortcut.register('CommandOrControl+Up', () => moveWindow('up'));
   globalShortcut.register('CommandOrControl+Down', () => moveWindow('down'));
+
+  // Paging within window (Option + Up/Down)
+  globalShortcut.register('Alt+Up', () => {
+    mainWindow?.webContents.send('page-scroll', 'up');
+  });
+  globalShortcut.register('Alt+Down', () => {
+    mainWindow?.webContents.send('page-scroll', 'down');
+  });
 
   // Config shortcut
   globalShortcut.register('CommandOrControl+P', () => {
