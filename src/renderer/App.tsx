@@ -277,6 +277,8 @@ const App: React.FC = () => {
             <div className="shortcut"><code>⌘/Ctrl + P</code> Settings</div>
             <div className="shortcut"><code>⌘/Ctrl + Q</code> Quit</div>
             <div className="shortcut"><code>⌘/Ctrl + Arrow Keys</code> Move Around</div>
+            <div className="shortcut"><code>⌥ + ↑/↓</code> Page</div>
+            <div className="shortcut"><code>⌥ + H</code> Show/Hide</div>
           </div>
         </div>
       </div>

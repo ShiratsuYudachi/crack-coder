@@ -28,6 +28,7 @@ let screenshotQueue: Screenshot[] = [];
 let isProcessing = false;
 const MAX_SCREENSHOTS = 4;
 const SCREENSHOT_DIR = path.join(app.getPath('temp'), 'screenshots');
+let isVisualHidden = false;
 
 async function ensureScreenshotDir() {
   try {
@@ -153,6 +154,13 @@ function registerShortcuts() {
   });
   globalShortcut.register('Alt+Down', () => {
     mainWindow?.webContents.send('page-scroll', 'down');
+  });
+
+  // Hide window (Option + H)
+  globalShortcut.register('Alt+H', () => {
+    if (!mainWindow) return;
+    isVisualHidden = !isVisualHidden;
+    mainWindow.setOpacity(isVisualHidden ? 0 : 1);
   });
 
   // Config shortcut
