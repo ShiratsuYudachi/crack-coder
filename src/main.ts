@@ -463,6 +463,23 @@ ipcMain.handle('save-config', async (_, newConfig: Config) => {
   }
 }); 
 
+// Buggy variant generator IPC
+ipcMain.handle('generate-buggy-variant', async (_evt, payload: { code: string; approach?: string; modelOverride?: string }) => {
+  try {
+    console.log('[Buggy] Generating buggy variant...');
+    const res = await openaiService.generateBuggyVariant({
+      code: payload.code,
+      approach: payload.approach,
+      modelOverride: payload.modelOverride
+    });
+    console.log('[Buggy] Result received');
+    return res;
+  } catch (err: any) {
+    console.error('[Buggy] Error generating buggy variant:', err);
+    return { responseType: 'buggyVariant', intent: 'introduce_mistakes', mistakeSummary: err?.message || 'error', edits: [{ description: 'error', rationale: err?.message || 'unknown' }], buggyCode: payload.code };
+  }
+});
+
 async function runPythonDaemonTest() {
   try {
     const sampleCode = [

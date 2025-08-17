@@ -165,6 +165,83 @@ export async function processScreenshots(screenshots: { path: string }[], overri
   }
 }
 
+export interface BuggyVariantResponse {
+  responseType: 'buggyVariant';
+  intent: 'introduce_mistakes';
+  mistakeSummary: string;
+  edits: { description: string; rationale: string }[]; // exactly two entries preferred
+  buggyCode: string;
+}
+
+export async function generateBuggyVariant(params: { code: string; approach?: string; language?: string; modelOverride?: string }): Promise<BuggyVariantResponse> {
+  if (!openai) {
+    throw new Error('OpenAI client not initialized. Please configure API key first.');
+  }
+  const { code, approach, language: langOverride, modelOverride } = params;
+  const lang = langOverride || language || 'Python';
+
+  const system = [
+    'You will receive a correct solution code. Your task is to intentionally introduce exactly two subtle mistakes to create a buggy version.',
+    '- These mistakes should be realistic careless mistakes: missing an edge case, wrong boundary condition, off-by-one, or mishandled input.',
+    '- The buggy version MUST remain largely similar to the original (same structure and algorithm spirit).',
+    '- Return STRICT JSON only with the following fields:',
+    '  {',
+    '    "responseType": "buggyVariant",',
+    '    "intent": "introduce_mistakes",',
+    '    "mistakeSummary": "<In Chinese: summarize what you changed and why it causes errors>",',
+    '    "edits": [',
+    '      { "description": "<In Chinese: what changed>", "rationale": "<In Chinese: why this leads to wrong output>" },',
+    '      { "description": "<In Chinese>", "rationale": "<In Chinese>" }',
+    '    ],',
+    '    "buggyCode": "<complete code with the two mistakes>"',
+    '  }',
+    '- Do NOT include any extra fields. Do NOT include markdown or backticks.',
+    '- Keep the programming language as: ' + lang
+  ].join('\n');
+
+  const user = [
+    'Original approach (may be empty):',
+    approach ? approach : '(none)',
+    '',
+    'Original correct code:',
+    code
+  ].join('\n');
+
+  const response = await openai.chat.completions.create({
+    model: (modelOverride && modelOverride.trim()) || modelName,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ],
+    temperature: 0.7,
+    max_tokens: 1600,
+    response_format: { type: 'json_object' }
+  });
+
+  const content = response.choices[0].message.content || '';
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && parsed.responseType === 'buggyVariant') {
+      return parsed as BuggyVariantResponse;
+    }
+    return {
+      responseType: 'buggyVariant',
+      intent: 'introduce_mistakes',
+      mistakeSummary: 'Raw content returned (unexpected shape).',
+      edits: [{ description: 'N/A', rationale: content }],
+      buggyCode: code
+    };
+  } catch {
+    return {
+      responseType: 'buggyVariant',
+      intent: 'introduce_mistakes',
+      mistakeSummary: 'Non-JSON content returned.',
+      edits: [{ description: 'N/A', rationale: content }],
+      buggyCode: code
+    };
+  }
+}
+
 export function setModel(model: string) {
   if (typeof model === 'string' && model.trim().length > 0) {
     modelName = model.trim();
@@ -174,5 +251,6 @@ export function setModel(model: string) {
 export default {
   processScreenshots,
   updateConfig,
-  setModel
+  setModel,
+  generateBuggyVariant
 };

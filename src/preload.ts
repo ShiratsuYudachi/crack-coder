@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electron', {
   saveConfig: (config: any) => ipcRenderer.invoke('save-config', config),
   pythonLoad: (code: string) => ipcRenderer.invoke('python-load', code),
   pythonRun: (input?: string) => ipcRenderer.invoke('python-run', input),
+  generateBuggyVariant: (payload: { code: string; approach?: string; modelOverride?: string }) => ipcRenderer.invoke('generate-buggy-variant', payload),
   
   toggleVisibility: () => ipcRenderer.send('toggle-visibility'),
   

@@ -63,6 +63,7 @@ declare global {
       toggleProMode: () => void;
       pythonLoad: (code: string) => Promise<{ id: number; ok: boolean; error?: string }>;
       pythonRun: (input?: string) => Promise<{ id: number; ok: boolean; stdout?: string; stderr?: string; error?: string }>;
+      generateBuggyVariant: (payload: { code: string; approach?: string; modelOverride?: string }) => Promise<any>;
     };
   }
 }
@@ -84,6 +85,11 @@ const App: React.FC = () => {
   ]);
   const [exampleTests, setExampleTests] = useState<
     { input: string; expected: string; actual?: string; ok?: boolean; error?: string }[] | null
+  >(null);
+  const [buggyVariant, setBuggyVariant] = useState<
+    | { pending: true }
+    | { pending?: false; mistakeSummary?: string; edits?: { description: string; rationale: string }[]; buggyCode?: string; error?: string }
+    | null
   >(null);
 
   useEffect(() => {
@@ -112,6 +118,7 @@ const App: React.FC = () => {
       setIsProcessing(true);
       setResult(null);
       setExampleTests(null);
+      setBuggyVariant(null);
     });
 
     // Keyboard event listener
@@ -217,6 +224,28 @@ const App: React.FC = () => {
                           ok: actualOut.trim() === expectedOut.trim()
                         };
                       }
+                      // If all resolved and all ok, trigger buggy variant generation
+                      const allResolved = next.every(t => typeof t.ok !== 'undefined');
+                      const allOk = allResolved && next.every(t => t.ok);
+                      if (allResolved && allOk) {
+                        console.log('[Buggy] All examples passed. Generating buggy variant...');
+                        setBuggyVariant({ pending: true });
+                        (async () => {
+                          try {
+                            const resp = await (window.electron as any).generateBuggyVariant({ code: codeResult.code, approach: codeResult.approach });
+                            console.log('[Buggy] Received buggy variant:', resp);
+                            setBuggyVariant({
+                              pending: false,
+                              mistakeSummary: resp?.mistakeSummary,
+                              edits: resp?.edits,
+                              buggyCode: resp?.buggyCode
+                            });
+                          } catch (e: any) {
+                            console.error('[Buggy] Error generating variant:', e);
+                            setBuggyVariant({ pending: false, error: e?.message || 'buggy variant error' });
+                          }
+                        })();
+                      }
                       return next;
                     });
                   })
@@ -234,9 +263,11 @@ const App: React.FC = () => {
           } else {
             console.log('[Examples] No examples provided by AI. Skipping example runs.');
             setExampleTests(null);
+            setBuggyVariant(null);
           }
         } else {
           setExampleTests(null);
+          setBuggyVariant(null);
         }
       } catch (error) {
         console.error('Error parsing result:', error);
@@ -361,6 +392,10 @@ const App: React.FC = () => {
     });
   }, [isProcessing, result, screenshots]);
 
+  useEffect(() => {
+    console.log('[Buggy] State update:', buggyVariant);
+  }, [buggyVariant]);
+
   const formatCode = (code: string) => {
     return code.split('\n').map((line, index) => (
       <div key={index} className="code-line">
@@ -428,6 +463,8 @@ const App: React.FC = () => {
                         code={r.data.code}
                         timeComplexity={r.data.timeComplexity}
                         spaceComplexity={r.data.spaceComplexity}
+                        tests={exampleTests || undefined}
+                        buggy={buggyVariant || undefined}
                       />
                     ) : r.data.responseType === 'answer' ? (
                       <AnswerResult result={r.data.result} approach={r.data.approach} />
@@ -447,6 +484,7 @@ const App: React.FC = () => {
               timeComplexity={result.timeComplexity}
               spaceComplexity={result.spaceComplexity}
               tests={exampleTests || undefined}
+              buggy={buggyVariant || undefined}
             />
           ) : result.responseType === 'answer' ? (
             <AnswerResult result={result.result} approach={result.approach} />

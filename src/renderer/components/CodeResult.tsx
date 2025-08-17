@@ -6,9 +6,16 @@ interface Props {
 	timeComplexity: string;
 	spaceComplexity: string;
 	tests?: { input: string; expected: string; actual?: string; ok?: boolean; error?: string }[];
+	buggy?: {
+		pending?: boolean;
+		mistakeSummary?: string;
+		edits?: { description: string; rationale: string }[];
+		buggyCode?: string;
+		error?: string;
+	};
 }
 
-const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComplexity, tests }) => {
+const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComplexity, tests, buggy }) => {
 	const lines = code.split('\n');
 	return (
 		<div className="result">
@@ -47,6 +54,33 @@ const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComp
 							</div>
 						))}
 					</div>
+				</div>
+			)}
+			{buggy && (
+				<div className="solution-section">
+					<h3>Buggy Variant</h3>
+					{buggy.pending ? (
+						<div>Generating buggy variant... (pending)</div>
+					) : buggy.error ? (
+						<div style={{ color: 'red' }}>Error: {buggy.error}</div>
+					) : (
+						<>
+							{buggy.mistakeSummary && <p>{buggy.mistakeSummary}</p>}
+							{buggy.edits && buggy.edits.length > 0 && (
+								<div style={{ marginBottom: 8 }}>
+									{buggy.edits.map((e, i) => (
+										<div key={i} style={{ marginBottom: 4 }}>
+											<div><strong>Change:</strong> {e.description}</div>
+											<div><strong>Why:</strong> {e.rationale}</div>
+										</div>
+									))}
+								</div>
+							)}
+							{buggy.buggyCode && (
+								<pre><code>{buggy.buggyCode}</code></pre>
+							)}
+						</>
+					)}
 				</div>
 			)}
 			<div className="solution-section">
