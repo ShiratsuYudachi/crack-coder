@@ -268,17 +268,16 @@ const App: React.FC = () => {
       
       {/* Preview Row */}
       <div className="shortcuts-row">
-        <div className="shortcut"><code>⌘/Ctrl + H</code> Screenshot</div>
-        <div className="shortcut"><code>⌘/Ctrl + ↵</code> Solution</div>
-        <div className="shortcut"><code>⌘/Ctrl + R</code> Reset</div>
+        <div className="shortcut"><code>fn + C</code> Screenshot</div>
+        <div className="shortcut"><code>fn + ↵</code> Solution</div>
+        <div className="shortcut"><code>fn + R</code> Reset</div>
         <div className="hover-shortcuts">
           <div className="hover-shortcuts-content">
-            <div className="shortcut"><code>⌘/Ctrl + B</code> Show/Hide</div>
-            <div className="shortcut"><code>⌘/Ctrl + P</code> Settings</div>
-            <div className="shortcut"><code>⌘/Ctrl + Q</code> Quit</div>
-            <div className="shortcut"><code>⌘/Ctrl + Arrow Keys</code> Move Around</div>
-            <div className="shortcut"><code>⌥ + ↑/↓</code> Page</div>
-            <div className="shortcut"><code>⌥ + H</code> Show/Hide</div>
+            <div className="shortcut"><code>fn + P</code> Settings</div>
+            <div className="shortcut"><code>fn + Q</code> Quit</div>
+            <div className="shortcut"><code>fn + ⇧ + Arrow Keys</code> Move Around</div>
+            <div className="shortcut"><code>fn + ↑/↓</code> Page</div>
+            <div className="shortcut"><code>fn + H</code> Show/Hide</div>
           </div>
         </div>
       </div>

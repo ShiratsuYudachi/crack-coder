@@ -1,9 +1,11 @@
-import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import openaiService from './services/openai';
+import { installShortcutArgHandlers } from './shortcuts';
+import { installCommandServer } from './commandServer';
 
 const execFileAsync = promisify(execFile);
 
@@ -104,11 +106,7 @@ function createWindow() {
   }
 
   // Register DevTools shortcut
-  globalShortcut.register('CommandOrControl+Shift+I', () => {
-    if (mainWindow) {
-      mainWindow.webContents.toggleDevTools();
-    }
-  });
+  // Shortcut registration moved out; use external triggers via args
 
   // Enable content protection to prevent screen capture
   mainWindow.setContentProtection(true);
@@ -128,46 +126,37 @@ function createWindow() {
   // Load the index.html file from the dist directory
   mainWindow.loadFile(path.join(__dirname, '../dist/renderer/index.html'));
 
-  // Register global shortcuts
-  registerShortcuts();
-}
-
-function registerShortcuts() {
-  // Screenshot & Processing shortcuts
-  globalShortcut.register('CommandOrControl+H', handleTakeScreenshot);
-  globalShortcut.register('CommandOrControl+Enter', handleProcessScreenshots);
-  globalShortcut.register('CommandOrControl+R', handleResetQueue);
-  globalShortcut.register('CommandOrControl+Q', () => app.quit());
-  
-  // Window visibility
-  globalShortcut.register('CommandOrControl+B', handleToggleVisibility);
-  
-  // Window movement
-  globalShortcut.register('CommandOrControl+Left', () => moveWindow('left'));
-  globalShortcut.register('CommandOrControl+Right', () => moveWindow('right'));
-  globalShortcut.register('CommandOrControl+Up', () => moveWindow('up'));
-  globalShortcut.register('CommandOrControl+Down', () => moveWindow('down'));
-
-  // Paging within window (Option + Up/Down)
-  globalShortcut.register('Alt+Up', () => {
-    mainWindow?.webContents.send('page-scroll', 'up');
-  });
-  globalShortcut.register('Alt+Down', () => {
-    mainWindow?.webContents.send('page-scroll', 'down');
+  // Install arg-based shortcut handlers (Fn-based via Karabiner or other launchers)
+  installShortcutArgHandlers({
+    app,
+    getMainWindow: () => mainWindow,
+    handleTakeScreenshot,
+    handleProcessScreenshots,
+    handleResetQueue,
+    moveWindow,
+    toggleVisualHidden: () => {
+      isVisualHidden = !isVisualHidden;
+      mainWindow?.setOpacity(isVisualHidden ? 0 : 1);
+    }
   });
 
-  // Hide window (Option + H)
-  globalShortcut.register('Alt+H', () => {
-    if (!mainWindow) return;
-    isVisualHidden = !isVisualHidden;
-    mainWindow.setOpacity(isVisualHidden ? 0 : 1);
-  });
-
-  // Config shortcut
-  globalShortcut.register('CommandOrControl+P', () => {
-    mainWindow?.webContents.send('show-config');
+  // Install local command server for focusless triggers (e.g., Karabiner curl)
+  installCommandServer({
+    port: 3939,
+    pageScroll: (dir) => mainWindow?.webContents.send('page-scroll', dir),
+    moveWindow,
+    triggerScreenshot: handleTakeScreenshot,
+    triggerProcess: handleProcessScreenshots,
+    triggerReset: handleResetQueue,
+    toggleVisualHidden: () => {
+      isVisualHidden = !isVisualHidden;
+      mainWindow?.setOpacity(isVisualHidden ? 0 : 1);
+    },
+    toggleConfig: () => mainWindow?.webContents.send('show-config')
   });
 }
+
+// Removed globalShortcut registration; handled via arg-based triggers
 
 async function captureScreenshot(): Promise<Buffer> {
   if (process.platform === 'darwin') {
@@ -328,7 +317,6 @@ app.whenReady().then(async () => {
 });
 
 app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
   handleResetQueue();
 });
 
