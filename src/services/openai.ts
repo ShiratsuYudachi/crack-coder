@@ -6,7 +6,7 @@ dotenv.config();
 
 let openai: OpenAI | null = null;
 let language = process.env.LANGUAGE || "Python";
-let modelName = process.env.OPENROUTER_MODEL || process.env.MODEL || "google/gemini-2.5-pro";
+let modelName = process.env.OPENROUTER_MODEL || process.env.MODEL || "openai/gpt-5-chat";
 let baseUrl = process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1';
 
 interface Config {
@@ -138,7 +138,7 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
 
     // Get response from OpenAI-compatible API (via OpenRouter)
     const response = await openai.chat.completions.create({
-      model: "google/gemini-2.5-pro",
+      model: modelName,
       messages: messages as any,
       max_tokens: 2000,
       temperature: 0.7,
@@ -161,7 +161,14 @@ export async function processScreenshots(screenshots: { path: string }[]): Promi
   }
 }
 
+export function setModel(model: string) {
+  if (typeof model === 'string' && model.trim().length > 0) {
+    modelName = model.trim();
+  }
+}
+
 export default {
   processScreenshots,
-  updateConfig
+  updateConfig,
+  setModel
 };

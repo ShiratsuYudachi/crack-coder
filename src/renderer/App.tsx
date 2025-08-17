@@ -57,6 +57,7 @@ declare global {
       onQueueReset: (callback: () => void) => void;
       onShowConfig: (callback: () => void) => void;
       onPageScroll: (callback: (direction: 'up' | 'down') => void) => void;
+      onModelUpdated: (callback: (data: { index: number; name: string }) => void) => void;
     };
   }
 }
@@ -68,6 +69,13 @@ const App: React.FC = () => {
   const [showConfig, setShowConfig] = useState(false);
   const [config, setConfig] = useState<Config | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [modelName, setModelName] = useState<string>('openai/gpt-5-chat');
+  const [modelList, setModelList] = useState<string[]>([
+    'openai/gpt-5-chat',
+    'openai/o4-mini',
+    'openai/o4-mini-high',
+    'openai/o3'
+  ]);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -175,6 +183,11 @@ const App: React.FC = () => {
       const scrollAmount = viewportHeight * 0.9;
       const delta = direction === 'up' ? -scrollAmount : scrollAmount;
       window.scrollBy({ top: delta, behavior: 'smooth' });
+    });
+
+    // Model update events
+    window.electron.onModelUpdated(({ index, name }) => {
+      setModelName(name);
     });
 
     // Cleanup
@@ -287,11 +300,13 @@ const App: React.FC = () => {
       
       {/* Preview Row */}
       <div className="shortcuts-row">
+        <div className="shortcut"><code>Model:</code> {modelName}</div>
         <div className="shortcut"><code>fn + C</code> Screenshot</div>
         <div className="shortcut"><code>fn + ↵</code> Solution</div>
         <div className="shortcut"><code>fn + R</code> Reset</div>
         <div className="hover-shortcuts">
           <div className="hover-shortcuts-content">
+            <div className="shortcut"><code>fn + 1/2/3/4</code> Switch Model</div>
             <div className="shortcut"><code>fn + P</code> Settings</div>
             <div className="shortcut"><code>fn + Q</code> Quit</div>
             <div className="shortcut"><code>fn + ⇧ + Arrow Keys</code> Move Around</div>

@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import openaiService from './services/openai';
+import openaiService, { setModel as setAIModel } from './services/openai';
 import { installShortcutArgHandlers } from './shortcuts';
 import { installCommandServer } from './commandServer';
 
@@ -31,6 +31,13 @@ let isProcessing = false;
 const MAX_SCREENSHOTS = 4;
 const SCREENSHOT_DIR = path.join(app.getPath('temp'), 'screenshots');
 let isVisualHidden = false;
+const MODEL_CANDIDATES = [
+  'openai/gpt-5-chat',
+  'openai/o4-mini',
+  'openai/o4-mini-high',
+  'openai/o3'
+];
+let currentModelIndex = 0;
 
 async function ensureScreenshotDir() {
   try {
@@ -152,7 +159,20 @@ function createWindow() {
       isVisualHidden = !isVisualHidden;
       mainWindow?.setOpacity(isVisualHidden ? 0 : 1);
     },
-    toggleConfig: () => mainWindow?.webContents.send('show-config')
+    toggleConfig: () => mainWindow?.webContents.send('show-config'),
+    setModel: (index: number) => {
+      if (index < 0 || index >= MODEL_CANDIDATES.length) return;
+      currentModelIndex = index;
+      setAIModel(MODEL_CANDIDATES[currentModelIndex]);
+      mainWindow?.webContents.send('model-updated', {
+        index: currentModelIndex,
+        name: MODEL_CANDIDATES[currentModelIndex]
+      });
+    },
+    getModelList: () => ({
+      currentIndex: currentModelIndex,
+      models: MODEL_CANDIDATES
+    })
   });
 }
 

@@ -31,5 +31,8 @@ contextBridge.exposeInMainWorld('electron', {
   },
   onPageScroll: (callback: (direction: 'up' | 'down') => void) => {
     ipcRenderer.on('page-scroll', (_, direction: 'up' | 'down') => callback(direction));
+  },
+  onModelUpdated: (callback: (data: { index: number; name: string }) => void) => {
+    ipcRenderer.on('model-updated', (_evt, data) => callback(data));
   }
 }); 
