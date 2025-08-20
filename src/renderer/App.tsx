@@ -121,57 +121,6 @@ const App: React.FC = () => {
       setBuggyVariant(null);
     });
 
-    // Keyboard event listener
-    const handleKeyDown = async (event: KeyboardEvent) => {
-      console.log('Key pressed:', event.key);
-      
-      // Check if Cmd/Ctrl is pressed
-      const isCmdOrCtrl = event.metaKey || event.ctrlKey;
-
-      switch (event.key.toLowerCase()) {
-        case '`':
-          // toggle pro-mode when fn + backtick is pressed
-          // Note: in browsers, Fn state isn't exposed; we rely on Karabiner to call backend normally.
-          // Here we allow manual toggle for environments where Fn state is accessible.
-          // This will not interfere if Karabiner is used exclusively.
-          window.electron.toggleProMode();
-          break;
-        case 'h':
-          console.log('Screenshot hotkey pressed');
-          await handleTakeScreenshot();
-          break;
-        case 'enter':
-          console.log('Process hotkey pressed');
-          await handleProcess();
-          break;
-        case 'r':
-          console.log('Reset hotkey pressed');
-          await handleReset();
-          break;
-        case 'p':
-          if (isCmdOrCtrl) {
-            console.log('Toggle config hotkey pressed');
-            setShowConfig(prev => !prev);
-          }
-          break;
-        case 'b':
-          if (isCmdOrCtrl) {
-            console.log('Toggle visibility hotkey pressed');
-            // Toggle visibility logic here
-          }
-          break;
-        case 'q':
-          if (isCmdOrCtrl) {
-            console.log('Quit hotkey pressed');
-            handleQuit();
-          }
-          break;
-      }
-    };
-
-    // Add keyboard event listener
-    window.addEventListener('keydown', handleKeyDown);
-
     // Listen for processing complete events
     window.electron.onProcessingComplete((resultStr) => {
       console.log('Processing complete. Result:', resultStr);
@@ -311,7 +260,6 @@ const App: React.FC = () => {
     // Cleanup
     return () => {
       console.log('Cleaning up event listeners...');
-      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -324,48 +272,7 @@ const App: React.FC = () => {
     }
   }, [error]);
 
-  const handleTakeScreenshot = async () => {
-    console.log('Taking screenshot, current count:', screenshots.length);
-    if (screenshots.length >= 4) {
-      console.log('Maximum screenshots reached');
-      return;
-    }
-    try {
-      await window.electron.takeScreenshot();
-      console.log('Screenshot taken successfully');
-    } catch (error) {
-      console.error('Error taking screenshot:', error);
-    }
-  };
-
-  const handleProcess = async () => {
-    console.log('Starting processing. Current screenshots:', screenshots);
-    if (screenshots.length === 0) {
-      console.log('No screenshots to process');
-      return;
-    }
-    setIsProcessing(true);
-    setResult(null);
-    setError(null);
-    try {
-      await window.electron.processScreenshots();
-      console.log('Process request sent successfully');
-    } catch (error: any) {
-      console.error('Error processing screenshots:', error);
-      setError(error?.message || 'Error processing screenshots');
-      setIsProcessing(false);
-    }
-  };
-
-  const handleReset = async () => {
-    console.log('Resetting queue...');
-    await window.electron.resetQueue();
-  };
-
-  const handleQuit = () => {
-    console.log('Quitting application...');
-    window.electron.quit();
-  };
+  
 
   const handleConfigSave = async (newConfig: Config) => {
     try {
