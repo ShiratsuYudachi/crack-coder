@@ -243,9 +243,8 @@ const App: React.FC = () => {
 
     // Listen for page scroll events from main (Option+Up/Down)
     window.electron.onPageScroll((direction) => {
-      const viewportHeight = window.innerHeight;
-      const scrollAmount = viewportHeight * 0.9;
-      const delta = direction === 'up' ? -scrollAmount : scrollAmount;
+      const step = 100; // fixed pixel step for both directions
+      const delta = direction === 'up' ? -step : step;
       window.scrollBy({ top: delta, behavior: 'smooth' });
     });
 
