@@ -93,7 +93,10 @@ body {
   padding: 1rem;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
-  overflow-x: auto;
+  overflow-x: visible;
+  overflow-y: visible;
+  white-space: pre-wrap; /* preserve whitespace and wrap */
+  word-break: break-word; /* break long tokens */
 }
 
 .solution-section code {
@@ -328,7 +331,8 @@ body {
   display: flex;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
   line-height: 1.5;
-  white-space: pre;
+  white-space: pre-wrap;
+  align-items: flex-start;
 }
 
 .line-number {
@@ -337,6 +341,11 @@ body {
   padding-right: 1em;
   user-select: none;
   min-width: 2em;
+}
+
+.code-text {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 pre {

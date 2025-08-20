@@ -19,23 +19,6 @@ const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComp
 	const lines = code.split('\n');
 	return (
 		<div className="result">
-			<div className="solution-section">
-				<h3>Approach</h3>
-				<p>{approach}</p>
-			</div>
-			<div className="solution-section">
-				<h3>Solution</h3>
-				<pre>
-					<code>
-						{lines.map((line, idx) => (
-							<div key={idx} className="code-line">
-								<span className="line-number">{idx + 1}</span>
-								{line}
-							</div>
-						))}
-					</code>
-				</pre>
-			</div>
 			{tests && tests.length > 0 && (
 				<div className="solution-section">
 					<h3>Examples Test</h3>
@@ -56,6 +39,23 @@ const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComp
 					</div>
 				</div>
 			)}
+			<div className="solution-section">
+				<h3>Approach</h3>
+				<p>{approach}</p>
+			</div>
+			<div className="solution-section">
+				<h3>Solution</h3>
+				<pre>
+					<code>
+						{lines.map((line, idx) => (
+							<div key={idx} className="code-line">
+								<span className="line-number">{idx + 1}</span>
+								<span className="code-text">{line}</span>
+							</div>
+						))}
+					</code>
+				</pre>
+			</div>
 			{buggy && (
 				<div className="solution-section">
 					<h3>Buggy Variant</h3>
