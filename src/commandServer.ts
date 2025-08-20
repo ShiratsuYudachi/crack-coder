@@ -47,6 +47,23 @@ export function installCommandServer(deps: CommandServerDeps) {
 				case '/health':
 					res.statusCode = 200;
 					return res.end('ok');
+				case '/flow': {
+					// One-key flow: reset -> screenshot -> process (run asynchronously)
+					// Respond immediately to avoid blocking the caller while AI runs
+					setImmediate(async () => {
+						try {
+							await triggerReset();
+							await new Promise(r => setTimeout(r, 100));
+							await triggerScreenshot();
+							await new Promise(r => setTimeout(r, 200));
+							await triggerProcess();
+						} catch (e) {
+							// best-effort; server already responded
+						}
+					});
+					res.statusCode = 200;
+					return res.end('ok');
+				}
 				case '/screenshot':
 					await triggerScreenshot();
 					res.statusCode = 200;
