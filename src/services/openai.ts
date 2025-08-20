@@ -183,7 +183,7 @@ export async function generateBuggyVariant(params: { code: string; approach?: st
   const system = [
     'You will receive a correct solution code. Your task is to intentionally introduce exactly two subtle mistakes to create a buggy version.',
     '- These mistakes should be realistic careless mistakes: missing an edge case, wrong boundary condition, off-by-one, or mishandled input.',
-    '- The buggy version MUST remain largely similar to the original (same structure and algorithm spirit).',
+    '- The buggy version MUST remain largely similar to the original (same structure and algorithm spirit). with only two slight mistake that clearly marked with a comment in same line in your output buggy version. the comment must mention the correct version',
     '- Return STRICT JSON only with the following fields:',
     '  {',
     '    "responseType": "buggyVariant",',
