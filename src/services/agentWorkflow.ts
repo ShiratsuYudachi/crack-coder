@@ -10,6 +10,16 @@ export interface WorkflowState {
   progress: number; // 0-100
   stepDetails: string;
   error?: string;
+  extractedExamples?: number; // 提取到的例子数量
+  parallelTasks?: Array<{
+    id: number;
+    status: 'pending' | 'running' | 'success' | 'failed';
+    model: string;
+    error?: string;
+    testsPassed?: number;
+    testsTotal?: number;
+  }>;
+  completed?: boolean; // 是否已完成
 }
 
 export interface WorkflowResult {
@@ -51,7 +61,15 @@ export class AgentWorkflow {
     this.classifyAgent = new ClassifyAgent(openai);
     this.extractAgent = new ExtractAgent(openai);
     this.verifyAgent = new VerifyAgent(openai);
-    this.codeAgent = new CodeAgent(openai, language);
+    this.codeAgent = new CodeAgent(openai, language, (tasks) => {
+      // 转发并行任务进度
+      this.onStatusUpdate({
+        currentStep: '生成代码解决方案...',
+        progress: 80,
+        stepDetails: `${tasks.filter((t: any) => t.status === 'success').length}/${tasks.length} 个解决方案已完成`,
+        parallelTasks: tasks
+      });
+    });
   }
 
   // 主入口 - 只在pro模式下调用
@@ -106,7 +124,9 @@ export class AgentWorkflow {
       throw new Error('无法提取有效的问题文本');
     }
 
-    this.updateStatus('生成代码解决方案...', 70, '并发调用3个模型生成解决方案');
+    // 显示提取到的examples数量
+    const exampleCount = extractedText.examples ? extractedText.examples.length : 0;
+    this.updateStatus('生成代码解决方案...', 70, `提取到${exampleCount}个测试例子，并发调用3个模型生成解决方案`, exampleCount);
     
     // Step 4: 并发生成3个解决方案
     const solutions = await this.codeAgent.generateCodeSolutions(extractedText);
@@ -116,7 +136,17 @@ export class AgentWorkflow {
     // Step 5: 选择最佳解决方案
     const bestSolution = this.selectBestCodeSolution(solutions);
     
-    this.updateStatus('完成', 100, '工作流执行完成');
+    // 获取最终的并行任务状态
+    const finalTasks = solutions.map((sol, index) => ({
+      id: index,
+      status: sol.ok ? 'success' as const : 'failed' as const,
+      model: `模型 ${index + 1}`,
+      error: sol.error,
+      testsPassed: sol.data?.tests ? sol.data.tests.filter((t: any) => t.ok === true).length : 0,
+      testsTotal: extractedText.examples ? extractedText.examples.length : 0
+    }));
+
+    this.updateStatus('完成', 100, `工作流执行完成，选择了${bestSolution.reason}`, exampleCount, finalTasks, true);
     
     // 确保返回的数据包含responseType字段
     const resultData = {
@@ -192,11 +222,14 @@ export class AgentWorkflow {
   }
 
   // 状态更新辅助方法
-  private updateStatus(step: string, progress: number, details: string) {
+  private updateStatus(step: string, progress: number, details: string, extractedExamples?: number, parallelTasks?: WorkflowState['parallelTasks'], completed?: boolean) {
     this.onStatusUpdate({
       currentStep: step,
       progress,
-      stepDetails: details
+      stepDetails: details,
+      extractedExamples,
+      parallelTasks,
+      completed
     });
   }
 }

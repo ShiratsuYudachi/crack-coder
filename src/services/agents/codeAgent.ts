@@ -23,26 +23,69 @@ export interface CodeSolution {
 export class CodeAgent {
   private openai: OpenAI;
   private language: string;
+  private onProgress?: (tasks: Array<{id: number; status: 'pending' | 'running' | 'success' | 'failed'; model: string; error?: string; testsPassed?: number; testsTotal?: number;}>) => void;
 
-  constructor(openai: OpenAI, language: string) {
+  constructor(openai: OpenAI, language: string, onProgress?: (tasks: any) => void) {
     this.openai = openai;
     this.language = language;
+    this.onProgress = onProgress;
   }
 
   async generateCodeSolutions(problemText: ExtractedProblem): Promise<CodeSolution[]> {
     const models = ['openai/gpt-5-chat', 'openai/gpt-5-chat', 'openai/gpt-5-chat'];
     
+    // 初始化任务状态
+    let tasks = models.map((model, index) => ({
+      id: index,
+      status: 'pending' as 'pending' | 'running' | 'success' | 'failed',
+      model: `模型 ${index + 1}`,
+      error: undefined as string | undefined,
+      testsPassed: 0,
+      testsTotal: problemText.examples ? problemText.examples.length : 0
+    }));
+    
+    if (this.onProgress) {
+      this.onProgress(tasks);
+    }
+
     // 并发执行3次代码生成
     const solutions = await Promise.all(
       models.map(async (model, index) => {
         try {
+          // 更新状态为运行中
+          tasks[index].status = 'running';
+          if (this.onProgress) {
+            this.onProgress([...tasks]);
+          }
+
           const solution = await this.generateSingleSolution(problemText, model);
+          
+          // 计算测试通过情况
+          let testsPassed = 0;
+          if (solution.tests) {
+            testsPassed = solution.tests.filter((t: any) => t.ok === true).length;
+          }
+
+          // 更新状态为成功
+          tasks[index].status = 'success';
+          tasks[index].testsPassed = testsPassed;
+          if (this.onProgress) {
+            this.onProgress([...tasks]);
+          }
+
           return {
             ok: true,
             data: solution,
             index
           };
         } catch (error: any) {
+          // 更新状态为失败
+          tasks[index].status = 'failed';
+          tasks[index].error = error?.message || '代码生成失败';
+          if (this.onProgress) {
+            this.onProgress([...tasks]);
+          }
+
           return {
             ok: false,
             error: error?.message || '代码生成失败',

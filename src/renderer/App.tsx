@@ -46,6 +46,16 @@ interface WorkflowState {
   progress: number; // 0-100
   stepDetails: string;
   error?: string;
+  extractedExamples?: number; // 提取到的例子数量
+  parallelTasks?: Array<{
+    id: number;
+    status: 'pending' | 'running' | 'success' | 'failed';
+    model: string;
+    error?: string;
+    testsPassed?: number;
+    testsTotal?: number;
+  }>;
+  completed?: boolean; // 是否已完成
 }
 
 declare global {
@@ -375,10 +385,10 @@ const App: React.FC = () => {
         ))}
       </div>
 
-      {/* Workflow Progress - Pro模式下显示 */}
+      {/* Workflow Progress - Pro模式下显示，完成后也保持可见 */}
       <WorkflowProgress 
         state={workflowState} 
-        visible={isProcessing && proMode} 
+        visible={proMode && (isProcessing || (workflowState?.completed === true))} 
       />
       
       {/* Status Row */}
