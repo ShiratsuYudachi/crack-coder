@@ -176,6 +176,8 @@ function createWindow() {
         
         if (result.success) {
           // 如果workflow成功，发送结果
+          console.log('[AgentWorkflow] Success result:', result);
+          console.log('[AgentWorkflow] Sending data:', JSON.stringify(result.data, null, 2));
           mainWindow?.webContents.send('processing-complete', JSON.stringify(result.data));
         } else {
           // 如果workflow失败，发送错误

@@ -118,9 +118,15 @@ export class AgentWorkflow {
     
     this.updateStatus('完成', 100, '工作流执行完成');
     
+    // 确保返回的数据包含responseType字段
+    const resultData = {
+      ...bestSolution.data,
+      responseType: 'code' as const
+    };
+    
     return {
       success: true,
-      data: bestSolution.data,
+      data: resultData,
       selectedResult: {
         index: bestSolution.index,
         reason: bestSolution.reason
@@ -163,7 +169,7 @@ export class AgentWorkflow {
     // 找到第一个成功的解决方案
     const successfulSolution = solutions.find(sol => sol.ok);
     
-    if (successfulSolution) {
+    if (successfulSolution && successfulSolution.data) {
       return {
         data: successfulSolution.data,
         index: successfulSolution.index,
@@ -171,11 +177,17 @@ export class AgentWorkflow {
       };
     }
     
-    // 如果都失败了，返回第一个
+    // 如果都失败了，返回一个默认的代码格式错误结果
+    const firstSolution = solutions[0];
     return {
-      data: solutions[0]?.data || null,
+      data: {
+        approach: '代码生成失败',
+        code: `错误: ${firstSolution?.error || '所有解决方案都失败'}`,
+        timeComplexity: 'N/A',
+        spaceComplexity: 'N/A'
+      },
       index: 0,
-      reason: '所有解决方案都失败，返回第一个结果'
+      reason: '所有解决方案都失败，返回错误信息'
     };
   }
 
