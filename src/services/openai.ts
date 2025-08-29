@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import fs from 'fs/promises';
+import { AgentWorkflow, WorkflowState } from './agentWorkflow';
 
 dotenv.config();
 
@@ -311,9 +312,23 @@ export function setModel(model: string) {
   }
 }
 
+// Pro模式下的Agent Workflow处理
+export async function processScreenshotsWithWorkflow(
+  screenshots: any[], 
+  onStatusUpdate: (state: WorkflowState) => void
+) {
+  if (!openai) {
+    throw new Error('OpenAI client is not initialized');
+  }
+
+  const workflow = new AgentWorkflow(openai, language, onStatusUpdate);
+  return await workflow.executeProWorkflow(screenshots);
+}
+
 export default {
   processScreenshots,
   updateConfig,
   setModel,
-  generateBuggyVariant
+  generateBuggyVariant,
+  processScreenshotsWithWorkflow
 };

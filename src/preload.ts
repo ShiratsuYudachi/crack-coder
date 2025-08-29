@@ -42,5 +42,8 @@ contextBridge.exposeInMainWorld('electron', {
   onProModeUpdated: (callback: (data: { enabled: boolean }) => void) => {
     ipcRenderer.on('pro-mode-updated', (_evt, data) => callback(data));
   },
-  toggleProMode: () => ipcRenderer.send('toggle-pro-mode')
+  toggleProMode: () => ipcRenderer.send('toggle-pro-mode'),
+  onWorkflowProgress: (callback: (state: any) => void) => {
+    ipcRenderer.on('workflow-progress', (_evt, state) => callback(state));
+  }
 }); 

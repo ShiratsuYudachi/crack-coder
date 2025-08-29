@@ -4,6 +4,7 @@ import * as fs from 'fs/promises';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import openaiService from './services/openai';
+import { processScreenshotsWithWorkflow } from './services/openai';
 import { installShortcutArgHandlers } from './shortcuts';
 import { installCommandServer } from './commandServer';
 import pythonDaemon from './pythonDaemon';
@@ -162,19 +163,38 @@ function createWindow() {
         return;
       }
       try {
-        const models = ['openai/gpt-5-chat', 'openai/gpt-5-chat', 'openai/gpt-5-chat'];
         mainWindow?.webContents.send('processing-started');
-        const results = await Promise.all(models.map(async (m) => {
-          try {
-            const r = await openaiService.processScreenshots(screenshotQueue, m);
-            return { model: m, ok: true, data: r };
-          } catch (e: any) {
-            return { model: m, ok: false, error: e?.message || 'error' };
+        
+        // 使用新的Agent Workflow处理
+        const result = await processScreenshotsWithWorkflow(
+          screenshotQueue, 
+          (state) => {
+            // 发送workflow状态更新到前端
+            mainWindow?.webContents.send('workflow-progress', state);
           }
+        );
+        
+        if (result.success) {
+          // 如果workflow成功，发送结果
+          mainWindow?.webContents.send('processing-complete', JSON.stringify(result.data));
+        } else {
+          // 如果workflow失败，发送错误
+          mainWindow?.webContents.send('processing-complete', JSON.stringify({
+            error: result.error || 'Agent Workflow执行失败',
+            approach: 'Agent Workflow错误',
+            code: `错误: ${result.error}`,
+            timeComplexity: 'N/A',
+            spaceComplexity: 'N/A'
+          }));
+        }
+      } catch (e: any) {
+        mainWindow?.webContents.send('processing-complete', JSON.stringify({
+          error: e?.message || 'Agent Workflow执行失败',
+          approach: 'Agent Workflow异常',
+          code: `异常: ${e?.message || '未知错误'}`,
+          timeComplexity: 'N/A',
+          spaceComplexity: 'N/A'
         }));
-        mainWindow?.webContents.send('processing-complete', JSON.stringify({ pro: true, results }));
-      } catch (e) {
-        mainWindow?.webContents.send('processing-complete', JSON.stringify({ pro: true, results: [] }));
       }
     },
     triggerReset: handleResetQueue,

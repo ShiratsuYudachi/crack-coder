@@ -4,6 +4,7 @@ import ConfigScreen from './ConfigScreen';
 import CodeResult from './components/CodeResult';
 import AnswerResult from './components/AnswerResult';
 import RawResult from './components/RawResult';
+import WorkflowProgress from './components/WorkflowProgress';
 
 interface Screenshot {
   id: number;
@@ -40,6 +41,13 @@ interface Config {
   language: string;
 }
 
+interface WorkflowState {
+  currentStep: string;
+  progress: number; // 0-100
+  stepDetails: string;
+  error?: string;
+}
+
 declare global {
   interface Window {
     electron: {
@@ -61,6 +69,7 @@ declare global {
       onModelUpdated: (callback: (data: { index: number; name: string }) => void) => void;
       onProModeUpdated: (callback: (data: { enabled: boolean }) => void) => void;
       toggleProMode: () => void;
+      onWorkflowProgress?: (callback: (state: WorkflowState) => void) => void;
       pythonLoad: (code: string) => Promise<{ id: number; ok: boolean; error?: string }>;
       pythonRun: (input?: string) => Promise<{ id: number; ok: boolean; stdout?: string; stderr?: string; error?: string }>;
       generateBuggyVariant: (payload: { code: string; approach?: string; modelOverride?: string }) => Promise<any>;
@@ -91,6 +100,7 @@ const App: React.FC = () => {
     | { pending?: false; mistakeSummary?: string; edits?: { description: string; rationale: string }[]; buggyCode?: string; error?: string }
     | null
   >(null);
+  const [workflowState, setWorkflowState] = useState<WorkflowState | null>(null);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -119,6 +129,7 @@ const App: React.FC = () => {
       setResult(null);
       setExampleTests(null);
       setBuggyVariant(null);
+      setWorkflowState(null); // 重置workflow状态
     });
 
     // Listen for processing complete events
@@ -227,6 +238,7 @@ const App: React.FC = () => {
         console.error('Error parsing result:', error);
       }
       setIsProcessing(false);
+      setWorkflowState(null); // 重置workflow状态
     });
 
     // Listen for new screenshots
@@ -259,6 +271,11 @@ const App: React.FC = () => {
     });
     window.electron.onProModeUpdated(({ enabled }) => {
       setProMode(enabled);
+    });
+
+    // Workflow progress events (Pro模式专用)
+    window.electron.onWorkflowProgress?.((state: WorkflowState) => {
+      setWorkflowState(state);
     });
 
     // Cleanup
@@ -358,10 +375,18 @@ const App: React.FC = () => {
         ))}
       </div>
 
+      {/* Workflow Progress - Pro模式下显示 */}
+      <WorkflowProgress 
+        state={workflowState} 
+        visible={isProcessing && proMode} 
+      />
+      
       {/* Status Row */}
       <div className="status-row">
         {isProcessing ? (
-          <div className="processing">Processing... ({screenshots.length} screenshots)</div>
+          <div className="processing">
+            {proMode ? 'Agent Workflow 运行中...' : `Processing... (${screenshots.length} screenshots)`}
+          </div>
         ) : result ? (
           Array.isArray((result as any).results) && (result as any).pro ? (
             <div style={{ display: 'flex', gap: 12 }}>
