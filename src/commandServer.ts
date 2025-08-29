@@ -16,6 +16,7 @@ interface CommandServerDeps {
   getModelList: () => { currentIndex: number; models: string[] };
   toggleProMode: () => void;
   restartApp: () => void;
+  copyAnswer: () => void;
 }
 
 export function installCommandServer(deps: CommandServerDeps) {
@@ -31,7 +32,8 @@ export function installCommandServer(deps: CommandServerDeps) {
 		setModel,
 		getModelList,
 		toggleProMode,
-		restartApp
+		restartApp,
+		copyAnswer
 	} = deps;
 
 	const server = http.createServer(async (req, res) => {
@@ -126,6 +128,10 @@ export function installCommandServer(deps: CommandServerDeps) {
 				}
 				case '/restart':
 					restartApp();
+					res.statusCode = 200;
+					return res.end('ok');
+				case '/copy-answer':
+					copyAnswer();
 					res.statusCode = 200;
 					return res.end('ok');
 				default:

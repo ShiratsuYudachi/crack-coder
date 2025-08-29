@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electron', {
   pythonLoad: (code: string) => ipcRenderer.invoke('python-load', code),
   pythonRun: (input?: string) => ipcRenderer.invoke('python-run', input),
   generateBuggyVariant: (payload: { code: string; approach?: string; modelOverride?: string }) => ipcRenderer.invoke('generate-buggy-variant', payload),
+  setCurrentAnswer: (answer: string) => ipcRenderer.invoke('set-current-answer', answer),
   
   toggleVisibility: () => ipcRenderer.send('toggle-visibility'),
   

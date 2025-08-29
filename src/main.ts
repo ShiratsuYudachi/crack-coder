@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { execFile } from 'child_process';
@@ -40,6 +40,7 @@ const MODEL_CANDIDATES = [
 ];
 let currentModelIndex = 0;
 let proMode = false;
+let currentAnswer: string = '';
 
 async function ensureScreenshotDir() {
   try {
@@ -205,6 +206,12 @@ function createWindow() {
     restartApp: () => {
       app.relaunch();
       app.exit(0);
+    },
+    copyAnswer: () => {
+      if (currentAnswer) {
+        clipboard.writeText(currentAnswer);
+        console.log('AI answer copied to clipboard');
+      }
     }
   });
 
@@ -447,6 +454,11 @@ ipcMain.handle('get-config', async () => {
     console.error('Error getting config:', error);
     return null;
   }
+});
+
+ipcMain.handle('set-current-answer', async (_, answer: string) => {
+  currentAnswer = answer;
+  return true;
 });
 
 ipcMain.handle('save-config', async (_, newConfig: Config) => {

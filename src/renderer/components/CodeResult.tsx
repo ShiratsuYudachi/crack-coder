@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface Props {
 	approach: string;
@@ -17,6 +17,13 @@ interface Props {
 
 const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComplexity, tests, buggy }) => {
 	const lines = code.split('\n');
+	
+	// 将当前代码部分发送到主进程以便复制
+	useEffect(() => {
+		if ((window as any).electron?.setCurrentAnswer) {
+			(window as any).electron.setCurrentAnswer(code);
+		}
+	}, [code]);
 	return (
 		<div className="result">
 			{tests && tests.length > 0 && (
