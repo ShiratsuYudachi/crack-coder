@@ -62,7 +62,7 @@ export interface CodeResponse {
   code: string;
   timeComplexity: string;
   spaceComplexity: string;
-  examples?: { input: string; output: string }[];
+  examples?: { input: string | string[]; output: string | string[] }[];
 }
 
 export interface AnswerResponse {
@@ -82,11 +82,15 @@ type MessageContent =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
 
-export async function processScreenshots(screenshots: { path: string }[], overrideModel?: string): Promise<AIResponse> {
+export async function processScreenshots(screenshots: { path: string }[], overrideModel?: string): Promise<AIResponse & { _log?: any }> {
   if (!openai) {
     throw new Error('OpenAI client not initialized. Please configure API key first. Click CTRL/CMD + P to open settings and set the API key.');
   }
 
+  const startTime = Date.now();
+  const model = (overrideModel && overrideModel.trim()) || modelName;
+  const logId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
   try {
     const messages = [
       {
@@ -113,7 +117,18 @@ export async function processScreenshots(screenshots: { path: string }[], overri
                   - Always output ONLY a single JSON object, no markdown, no backticks.
                   - "approach" MUST always be in Chinese.
                   - For responseType:"answer", "result" MUST be the same language as the question.
-                  - For responseType:"code": If the problem statement includes explicit example input AND output, extract them into an array field named "examples" with objects of shape {"input": string, "output": string}; include multiple pairs if present.
+                  - For responseType:"code": If the problem statement includes explicit example input AND output, extract them into an array field named "examples" with specific format:
+                    Examples of proper format extraction:
+                    * Single-line: {"input": "5", "output": "120"} (for factorial calculation)
+                    * Multi-line input: {"input": ["4", "1 2 3 4", "1 2", "2 3", "3 4"], "output": "10"} (array queries)
+                    * Multi-line output: {"input": "3", "output": ["1", "1 1", "1 2 1"]} (Pascal's triangle)
+                    * Both multi-line: {"input": ["2", "hello", "world"], "output": ["HELLO", "WORLD"]} (string processing)
+                    * Matrix format: {"input": ["2 3", "1 2 3", "4 5 6"], "output": ["6", "15"]} (matrix operations)
+                    Critical rules:
+                    - Use string arrays ["line1", "line2"] for multi-line content, NOT escaped strings "line1\\nline2"
+                    - Each line is a separate array element
+                    - Preserve exact spacing and formatting from the problem
+                    - Single values remain as strings, not single-element arrays
                   - If no explicit example input/output are present, DO NOT include the "examples" field at all (do not include null/empty).`
       },
       {
@@ -142,26 +157,74 @@ export async function processScreenshots(screenshots: { path: string }[], overri
 
     // Get response from OpenAI-compatible API (via OpenRouter)
     const response = await openai.chat.completions.create({
-      model: (overrideModel && overrideModel.trim()) || modelName,
+      model: model,
       messages: messages as any,
       max_tokens: 2000,
       temperature: 0.7,
       response_format: { type: "json_object" }
     });
 
+    const duration = Date.now() - startTime;
     const content = response.choices[0].message.content || '';
+    
     try {
       const parsed = JSON.parse(content);
       if (parsed && (parsed.responseType === 'code' || parsed.responseType === 'answer')) {
-        return parsed as AIResponse;
+        const result = parsed as AIResponse;
+        // Add log information
+        (result as any)._log = {
+          id: logId,
+          timestamp: new Date().toLocaleTimeString(),
+          model: model,
+          status: 'success',
+          responseType: result.responseType,
+          approach: result.responseType === 'code' ? (result as any).approach : 
+                   result.responseType === 'answer' ? (result as any).approach : undefined,
+          timeComplexity: result.responseType === 'code' ? (result as any).timeComplexity : undefined,
+          spaceComplexity: result.responseType === 'code' ? (result as any).spaceComplexity : undefined,
+          examplesCount: result.responseType === 'code' && (result as any).examples ? 
+                        (result as any).examples.length : undefined,
+          duration: duration
+        };
+        return result;
       }
-      return { responseType: 'raw', raw: content } as RawResponse;
+      const rawResult = { responseType: 'raw', raw: content } as RawResponse;
+      (rawResult as any)._log = {
+        id: logId,
+        timestamp: new Date().toLocaleTimeString(),
+        model: model,
+        status: 'success',
+        responseType: 'raw',
+        duration: duration
+      };
+      return rawResult;
     } catch {
-      return { responseType: 'raw', raw: content } as RawResponse;
+      const rawResult = { responseType: 'raw', raw: content } as RawResponse;
+      (rawResult as any)._log = {
+        id: logId,
+        timestamp: new Date().toLocaleTimeString(),
+        model: model,
+        status: 'success',
+        responseType: 'raw',
+        duration: duration
+      };
+      return rawResult;
     }
   } catch (error) {
     console.error('Error processing screenshots:', error);
-    throw error;
+    const errorResult = {
+      responseType: 'raw' as const,
+      raw: `Error: ${error instanceof Error ? error.message : String(error)}`,
+      _log: {
+        id: logId,
+        timestamp: new Date().toLocaleTimeString(),
+        model: model,
+        status: 'error',
+        error: error instanceof Error ? error.message : String(error),
+        duration: Date.now() - startTime
+      }
+    };
+    throw errorResult;
   }
 }
 

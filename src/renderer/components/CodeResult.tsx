@@ -5,7 +5,7 @@ interface Props {
 	code: string;
 	timeComplexity: string;
 	spaceComplexity: string;
-	tests?: { input: string; expected: string; actual?: string; ok?: boolean; error?: string }[];
+	tests?: { input: string | string[]; expected: string | string[]; actual?: string; ok?: boolean; error?: string }[];
 	buggy?: {
 		pending?: boolean;
 		mistakeSummary?: string;
@@ -31,9 +31,46 @@ const CodeResult: React.FC<Props> = ({ approach, code, timeComplexity, spaceComp
 									</span>
 									{t.error ? ` - ${t.error}` : ''}
 								</div>
-								<div><code>input:</code> {t.input}</div>
-								<div><code>expected:</code> {t.expected}</div>
-								<div><code>actual:</code> {typeof t.actual === 'undefined' ? '(pending...)' : t.actual}</div>
+								<div>
+									<code>input:</code>{' '}
+									{Array.isArray(t.input) ? (
+										<pre style={{ margin: 0, display: 'inline-block', whiteSpace: 'pre-wrap', backgroundColor: '#f5f5f5', padding: '4px', borderRadius: '4px' }}>
+											{t.input.join('\n')}
+										</pre>
+									) : typeof t.input === 'string' && t.input.includes('\n') ? (
+										<pre style={{ margin: 0, display: 'inline-block', whiteSpace: 'pre-wrap', backgroundColor: '#f5f5f5', padding: '4px', borderRadius: '4px' }}>
+											{t.input}
+										</pre>
+									) : (
+										t.input
+									)}
+								</div>
+								<div>
+									<code>expected:</code>{' '}
+									{Array.isArray(t.expected) ? (
+										<pre style={{ margin: 0, display: 'inline-block', whiteSpace: 'pre-wrap', backgroundColor: '#f5f5f5', padding: '4px', borderRadius: '4px' }}>
+											{t.expected.join('\n')}
+										</pre>
+									) : typeof t.expected === 'string' && t.expected.includes('\n') ? (
+										<pre style={{ margin: 0, display: 'inline-block', whiteSpace: 'pre-wrap', backgroundColor: '#f5f5f5', padding: '4px', borderRadius: '4px' }}>
+											{t.expected}
+										</pre>
+									) : (
+										t.expected
+									)}
+								</div>
+								<div>
+									<code>actual:</code>{' '}
+									{typeof t.actual === 'undefined' ? (
+										'(pending...)'
+									) : typeof t.actual === 'string' && t.actual.includes('\n') ? (
+										<pre style={{ margin: 0, display: 'inline-block', whiteSpace: 'pre-wrap', backgroundColor: '#f5f5f5', padding: '4px', borderRadius: '4px' }}>
+											{t.actual}
+										</pre>
+									) : (
+										t.actual
+									)}
+								</div>
 							</div>
 						))}
 					</div>

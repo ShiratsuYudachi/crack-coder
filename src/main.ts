@@ -161,7 +161,7 @@ function createWindow() {
         return;
       }
       try {
-        const models = ['openai/gpt-5-chat', 'openai/o4-mini-high', 'openai/o3'];
+        const models = ['openai/gpt-5-chat', 'openai/gpt-5-chat', 'openai/gpt-5-chat'];
         mainWindow?.webContents.send('processing-started');
         const results = await Promise.all(models.map(async (m) => {
           try {

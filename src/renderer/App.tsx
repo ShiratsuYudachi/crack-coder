@@ -19,7 +19,7 @@ interface CodeResponse {
   code: string;
   timeComplexity: string;
   spaceComplexity: string;
-  examples?: { input: string; output: string }[];
+  examples?: { input: string | string[]; output: string | string[] }[];
 }
 
 interface AnswerResponse {
@@ -84,7 +84,7 @@ const App: React.FC = () => {
     'openai/o3'
   ]);
   const [exampleTests, setExampleTests] = useState<
-    { input: string; expected: string; actual?: string; ok?: boolean; error?: string }[] | null
+    { input: string | string[]; expected: string | string[]; actual?: string; ok?: boolean; error?: string }[] | null
   >(null);
   const [buggyVariant, setBuggyVariant] = useState<
     | { pending: true }
@@ -151,7 +151,9 @@ const App: React.FC = () => {
               // Run all examples in parallel; update incrementally
               (codeResult.examples || []).forEach((ex, idx) => {
                 console.log(`[Examples] Running example #${idx}:`, ex);
-                window.electron.pythonRun(ex.input)
+                // Convert input to string format for display and daemon processing
+                const inputForDaemon = Array.isArray(ex.input) ? ex.input.join('\n') : ex.input;
+                window.electron.pythonRun(inputForDaemon)
                   .then(runRes => {
                     console.log(`[Examples] Result for #${idx}:`, runRes);
                     setExampleTests(prev => {
@@ -166,7 +168,10 @@ const App: React.FC = () => {
                         };
                       } else {
                         const actualOut = (runRes.stdout || '').replace(/\r\n/g, '\n');
-                        const expectedOut = (ex.output || '').replace(/\r\n/g, '\n');
+                        // Handle different expected output formats
+                        const expectedOut = Array.isArray(ex.output) 
+                          ? ex.output.join('\n').replace(/\r\n/g, '\n')
+                          : (ex.output || '').replace(/\r\n/g, '\n');
                         next[idx] = {
                           ...next[idx],
                           actual: actualOut,
