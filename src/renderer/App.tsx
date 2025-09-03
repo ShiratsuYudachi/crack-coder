@@ -248,7 +248,6 @@ const App: React.FC = () => {
         console.error('Error parsing result:', error);
       }
       setIsProcessing(false);
-      setWorkflowState(null); // 重置workflow状态
     });
 
     // Listen for new screenshots

@@ -17,6 +17,56 @@ interface Config {
   baseURL?: string;
 }
 
+const promptFewShots = `
+You need to add comment in your code to explain the logics, seperate your code to different blocks like below:
+
+function reverseKGroup(head: ListNode | null, k: number): ListNode | null {
+  let vhead = new ListNode(-1,head) // 虚拟头节点，简化边界条件处理
+
+  let reverseK = (head, prev)=>{ // 核心算法部分
+      if (head===null) return
+      let pre = prev
+      let start = head
+      let i = 1
+      
+      // Step 1： 找到当前组的结束位置
+      let end = start
+      while (i<k) {
+          if (end.next===null) return // 不够7个节点，直接返回
+          end = end.next
+          i++
+      }
+      
+    // Step 2：分离当前组
+      let succ = end.next // 保存后续链表
+      end.next = null // 切断连接，形成独立的K个节点组
+      
+  // Step 3： 反转当前组，之后首尾接入大链表
+      reverse(start)
+      pre.next = end // 将前一组连接到当前组的新头部
+      start.next = succ // 将当前组的新尾部连接到后续链表
+      
+      // Step 4： 递归处理之后的部分
+      reverseK(succ, start)
+  }
+  reverseK(head,vhead)
+  return vhead.next
+};
+
+// 用于反转单独一段链表
+function reverse(head: ListNode | null){ 
+  if (head===null) return null
+  let prev = null
+  let curr = head
+  while(curr!=null){
+      let n = curr.next
+      curr.next = prev
+      prev = curr
+      curr = n
+  }
+}
+`
+
 function updateConfig(config: Config) {
   if (!config.apiKey) {
     throw new Error('OpenAI API key is required');
@@ -99,6 +149,7 @@ export async function processScreenshots(screenshots: { path: string }[], overri
         content: `You are an expert technical interview assistant.
                   You will receive one or more screenshots that contain either a coding question or a non-coding question.
                   You MUST always answer in valid JSON and ONLY JSON with no extra text.
+                  ${promptFewShots}
                   The first field MUST be "responseType" with value either "code" or "answer".
                   If multiple questions are shown, answer first question only.
                   - If the question requires writing code, return responseType:"code" with fields: {
@@ -130,7 +181,10 @@ export async function processScreenshots(screenshots: { path: string }[], overri
                     - Each line is a separate array element
                     - Preserve exact spacing and formatting from the problem
                     - Single values remain as strings, not single-element arrays
-                  - If no explicit example input/output are present, DO NOT include the "examples" field at all (do not include null/empty).`
+                  - If no explicit example input/output are present, DO NOT include the "examples" field at all (do not include null/empty).
+                  - Make sure your code is ACM style - which means you need to handle input/output manually in the main function. If the question is leetcode style (write a function only), add a main function(if name == main in python) in the end of code.
+                  - Your code output will be runned directly in a python daemon. so Do not just give a function as no one will call it.`
+                  
       },
       {
         role: "user" as const,
