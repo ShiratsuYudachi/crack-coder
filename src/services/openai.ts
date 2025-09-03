@@ -103,7 +103,7 @@ export async function processScreenshots(screenshots: { path: string }[], overri
                   If multiple questions are shown, answer first question only.
                   - If the question requires writing code, return responseType:"code" with fields: {
                       "responseType": "code",
-                      "approach": "Explain the full solving process in Chinese",
+                      "approach": "Explain the full solving process in Chinese, first with a concise summary, then with a detailed step-by-step explanation with explaination to technical terms used, e.g. some specific data structure like trie",
                       "code": "Complete, runnable solution code",
                       "timeComplexity": "Big-O with reasoning",
                       "spaceComplexity": "Big-O with reasoning",
